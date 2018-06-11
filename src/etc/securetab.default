@@ -1,41 +1,60 @@
 # /etc/securetab
 
-# For documentation on how this file works run `man securetab`.
+# vim: set syntax=config:
+# vim: set tabstop=4:
 
-# By default, securelevels 1 and 2 are identical and securelevels 3 and 4 are
-# identical. Odd numbered securelevels are reserved for use by the distribution
+# Secure Levels:
+#  0   Disabled - securelevel will not attempt to change system settings.
+#  1   Light - enable some hardening settings, but avoid enabling any settings
+#        that may break stuff; err on the side of functionality/ease of use over
+#        security.
+#  2   Same as securelevel 1.
+#  3   Standard (default) - enable standard hardening settings. Attempt to avoid
+#        breaking stuff if possible, but err on the side of security over
+#        functionaligy/ease of use.
+#  4   Same as securelevel 3.
+#  5   Pedantic - enable aggressive hardening settings. This will likely cause
+#        some stuff to break.
+#  6   Same as securelevel 5.
+
+# Odd numbered securelevels are reserved for use by the distribution
 # maintainers; even numbered levels are reserved for customization by the local
 # system administrator.
 
-#################### Securelevel: #####	1 #####	2 #####	3 #####	4 ##############
+# For complete documentation on how this file works run `man securetab`.
+
+############################ Securelevel: # 1 # 2 # 3 # 4 # 5 # 6 ##############
 
 # Keep the file /run/securelevel in sync with the current securelevel. Do NOT
 # edit or delete this line.
-file:/run/securelevel			1	2	3	4
+file:/run/securelevel						1	2	3	4	5	6
 
 # Disable loading or unloading any further kernel modules
-sysctl:kernel.modules_disabled		0	0	1	1
+sysctl:kernel.modules_disabled				0	0	1	1	1	1
 
-# Use the Kernel Self Protection Project's Recommended settings (see
+######################## Kernel Self Protection Project ########################
+# Use the Kernel Self Protection Project's recommended settings (see
 # http://kernsec.org/wiki/index.php/Kernel_Self_Protection_Project/Recommended_Settings)
 
 # Try to keep kernel address exposures out of various /proc files (kallsyms,
 # modules, etc).
-sysctl:kernel.kptr_restrict		1	1	1	1
+sysctl:kernel.kptr_restrict					1	1	1	1	1	1
 
 # Avoid kernel memory address exposures via dmesg.
-sysctl:kernel.dmesg_restrict		1	1	1	1
+sysctl:kernel.dmesg_restrict				1	1	1	1	1	1
 
 # Avoid non-ancestor ptrace access to running processes and their credentials.
-sysctl:kernel.yama.ptrace_scope		1	1	1	1
+sysctl:kernel.yama.ptrace_scope				1	1	1	1	1	1
 
 # Disable User Namespaces, as it opens up a large attack surface to
 # unprivileged users.
-sysctl:user.max_user_namespaces		0	0	0	0
+sysctl:user.max_user_namespaces				0	0	0	0	0	0
 
 # Turn off unprivileged eBPF access.
-sysctl:kernel.unprivileged_bpf_disabled	1	1	1	1
+sysctl:kernel.unprivileged_bpf_disabled		1	1	1	1	1	1
 
-# Turn on BPF JIT hardening, if the JIT is enabled.
-sysctl:net.core.bpf_jit_harden		2	2	2	2
+# Turn on BPF JIT hardening, if the JIT is enabled. Available on x86_64 only.
+sysctl:net.core.bpf_jit_harden				2	2	2	2	2	2
+
+########################## Pedantic Network Settings ###########################
 
