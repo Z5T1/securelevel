@@ -1,0 +1,41 @@
+# /etc/securetab
+
+# For documentation on how this file works run `man securetab`.
+
+# By default, securelevels 1 and 2 are identical and securelevels 3 and 4 are
+# identical. Odd numbered securelevels are reserved for use by the distribution
+# maintainers; even numbered levels are reserved for customization by the local
+# system administrator.
+
+#################### Securelevel: #####	1 #####	2 #####	3 #####	4 ##############
+
+# Keep the file /run/securelevel in sync with the current securelevel. Do NOT
+# edit or delete this line.
+file:/run/securelevel			1	2	3	4
+
+# Disable loading or unloading any further kernel modules
+sysctl:kernel.modules_disabled		0	0	1	1
+
+# Use the Kernel Self Protection Project's Recommended settings (see
+# http://kernsec.org/wiki/index.php/Kernel_Self_Protection_Project/Recommended_Settings)
+
+# Try to keep kernel address exposures out of various /proc files (kallsyms,
+# modules, etc).
+sysctl:kernel.kptr_restrict		1	1	1	1
+
+# Avoid kernel memory address exposures via dmesg.
+sysctl:kernel.dmesg_restrict		1	1	1	1
+
+# Avoid non-ancestor ptrace access to running processes and their credentials.
+sysctl:kernel.yama.ptrace_scope		1	1	1	1
+
+# Disable User Namespaces, as it opens up a large attack surface to
+# unprivileged users.
+sysctl:user.max_user_namespaces		0	0	0	0
+
+# Turn off unprivileged eBPF access.
+sysctl:kernel.unprivileged_bpf_disabled	1	1	1	1
+
+# Turn on BPF JIT hardening, if the JIT is enabled.
+sysctl:net.core.bpf_jit_harden		2	2	2	2
+
