@@ -1,0 +1,186 @@
+#!/bin/bash
+
+# Copyright 2018 Scott Court
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+VERSION=0.0.0-git
+
+# Verifies the integrity of a line by checking to make sure it is formatted
+# correctly.
+# @param $@	The line to verify the integrity of.
+# @return	0 if the line is formatted correctly, otherwise 1.
+verify_line () {
+	local TYPE=$(echo $1 | cut -d : -f 1)
+	local NAME=$(echo $1 | cut -d : -f 2-)
+
+	# Check number of arguments
+	if [ $# -ne 7 ]; then
+		echo "Incorrect number of columns: expected 7."
+		return 1
+	fi
+
+	# Verify Type
+	case $TYPE in
+	sysctl)	;;
+	file)	;;
+	*)
+		echo "Invalid variable type: $TYPE"
+		return 1
+	esac
+
+	# Verify Name
+	if [ -z "$NAME" ]; then
+		echo "Expected variable name after $TYPE:"
+		return 1
+	fi
+}
+
+# Evaluates a line, setting the variable to the value for current securelevel,
+# as defined by the SECURELEVEL global variable.
+# @param $@	The line to evaluate.
+eval_line () {
+	local TYPE=$(echo $1 | cut -d : -f 1)
+	local NAME=$(echo $1 | cut -d : -f 2-)
+	local VALUE=
+
+	case $SECURELEVEL in
+		1)  VALUE=$2  ;;
+		2)  VALUE=$3  ;;
+		3)  VALUE=$4  ;;
+		4)  VALUE=$5  ;;
+		5)  VALUE=$6  ;;
+		6)  VALUE=$7  ;;
+		*)
+			echo "Error: invalid securelevel $SECURELEVEL"
+			return 1
+			;;
+	esac
+
+	case $TYPE in
+		sysctl)
+			local OLDVALUE=$(sysctl -n $NAME)
+			if [ "$OLDVALUE" != "$VALUE" ]; then
+				[ "$VERBOSE" == true ] && echo "sysctl $NAME: $OLDVALUE -> $VALUE"
+				sysctl -q $NAME=$VALUE
+			fi
+			;;
+		file)
+			[ "$VERBOSE" == true ] && echo "file $NAME: $VALUE"
+			echo $VALUE > $NAME || return 1
+			;;
+	esac
+}
+
+# Parses a file, verifying each line and then evaluating each line of the file
+# @param $1	The path to the file to parse
+parse_file () {
+	# Check that the file is owned by root and not world writable.
+	local OWNER=$(stat -c %u $1)
+	if [ $OWNER -ne 0 ]; then
+		echo "$1 must be owned by root. Refusing to parse insecure file."
+		return 1
+	fi
+	local PERM=$(stat -c %a $1)
+	if (((8#$PERM & 8#133) != 0)); then
+		echo "$1 must not be writable by any user other than root and must not be executable. Current permissions are ${PERM}; expected at most 644. Refusing to parse insecure file."
+		return 1
+	fi
+	if (((8#$PERM & 8#044) != 0)); then
+		echo "$1 is currently readable by non-root users. It is recommended that its permissions be set to 600 (its permissions are currently $PERM)."
+	fi
+
+	# First pass: verify file
+	local i=0
+	while read line; do
+		i=$(expr $i + 1)
+		if [[ "$line" == "" || "${line:0:1}" == "#" ]]; then
+			continue
+		fi
+		if ! verify_line $line; then
+			echo "Malformed input in $1 at line ${i}."
+			return 2
+		fi
+	done < $1
+
+	# Second pass: evaluate file
+	while read line; do
+		if [[ "$line" == "" || "${line:0:1}" == "#" ]]; then
+			continue
+		fi
+		eval_line $line || return 3
+	done < $1
+
+}
+
+# Ensure this script is run as root
+if [ $(id -u) -ne 0 ]; then
+	echo "$0 must be run as root"
+	exit 1
+fi
+
+# Create /run/securelevel and initialize it to 0 if it doesn't already exist.
+if [ ! -e /run/securelevel ]; then
+	touch /run/securelevel || exit 1
+	chown root:root /run/securelevel || exit 1
+	chmod 640 /run/securelevel || exit 1
+	echo 0 > /run/securelevel
+fi
+
+SECURELEVEL=$(cat /run/securelevel)
+
+# Parse Arguments
+OPTS=$(getopt -o vf: -l verbose,file: -- $@)
+eval set -- "$OPTS"
+
+NEWLEVEL=
+VERBOSE=false
+SECURETAB=/etc/securetab
+
+while [ true ]; do
+	case "$1" in
+		-v | --verbose) VERBOSE=true; shift ;;
+		-f | --file) SECURETAB=$2; shift 2 ;;
+		--) shift; break ;;
+		*) break ;;
+	esac
+done
+
+NEWLEVEL=$1
+# If a securelevel wasn't specified, then just print the current securelevel.
+if [ -z "$NEWLEVEL" ]; then
+	cat /run/securelevel
+# If a securelevel was specified, attempt to switch to that securelevel.
+else
+	if [ $NEWLEVEL -lt $SECURELEVEL ]; then
+		echo "The securelevel can be lowered only by rebooting."
+		exit 1
+	elif [ $NEWLEVEL -eq $SECURELEVEL ]; then
+		exit
+	fi
+	OLDLEVEL=$SECURELEVEL
+	SECURELEVEL=$NEWLEVEL
+	parse_file $SECURETAB
+	STATUS=$?
+	if [ $STATUS -eq 0 ]; then
+		echo "Switched securelevel: $OLDLEVEL -> $NEWLEVEL"
+	fi
+	exit $?
+fi
+
