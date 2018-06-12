@@ -3,6 +3,8 @@
 # vim: set syntax=config:
 # vim: set tabstop=4:
 
+# This file is best viewed with a tab width of 4.
+
 # Secure Levels:
 #  0   Disabled - securelevel will not attempt to change system settings.
 #  1   Light - enable some hardening settings, but avoid enabling any settings

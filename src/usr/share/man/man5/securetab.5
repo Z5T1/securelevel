@@ -1,0 +1,90 @@
+.\" Copyright 2018 Scott Court
+.\"
+.\" Permission is hereby granted, free of charge, to any person obtaining a copy
+.\" of this software and associated documentation files (the "Software"), todeal
+.\" in the Software without restriction, including without limitation the
+.\" rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+.\" sell copies of the Software, and to permit persons to whom the Software is
+.\" furnished to do so, subject to the following conditions:
+.\"
+.\" The above copyright notice and this permission notice shall be included in
+.\" all copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+.\" IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+.\" AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+.\" LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+.\" FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+.\" IN THE SOFTWARE.
+.TH MAN 5 2018-06-12 "Linux" "Linux System Administrator's Manual"
+.SH NAME
+securetab \- format of the /etc/securetab file used by securelevel
+
+.SH DESCRIPTION
+The securetab file controls how system variables are set when changing the system' securelevel using
+.BR securelevel (8).
+Each line in this file controls a single variable. A variable can be either a file or a sysctl value. An entry in the securetab file has the following format:
+.RS
+.sp
+type:name		1	2	3	4	5	6
+.sp
+.RE
+.PP
+Lines beginning with `#' are ignored.
+.IP \fBtype\fP
+is the type for this variable. This indicates what kind of value comes after it and determines how that value will be changed. Valid types are as follows:
+.sp
+\fIsysctl\fP - indicates that the text in the name field is a sysctl variable. This sysctl value will be changed via 
+.BR sysctl (8)
+when changing securelevels.
+.sp
+\fIfile\fP - indicates that the text in the name field is a file path. The contents of the file will be changed when changing securelevels.
+.IP \fBname\fP
+is the name of the variable (i.e. file or sysctl) to change.
+.IP \fB1-6\fP
+is the value to set the variable to at each securelevel. The value in the first column is the value to set the variable to when entering securelevel 1, the second column is the value to set it to when entering securelevel 2, and so on. The columns may be separated by any amount and/or type of whitespace.
+.PP
+Valid secure level numbers are 0 through 6 inclusive. Conventionally the different securelevels are configured as follows:
+.IP 0
+Disabled - securelevel will not attempt to change system settings. Since nothing is done at thie securelevel, there are no entries for it in \fIsecuretab\fP.
+.IP 1
+Light - enable some hardening settings, but avoid enabling any settings that may break stuff; err on the side of functionality/ease of use over security.
+.IP 2
+Same as securelevel 1 by default. Reserved for customization by the local system administrator.
+.IP 3
+Standard (default) - enable standard hardening settings. Attempt to avoid breaking stuff if possible, but err on the side of security over functionaligy/ease of use.
+.IP 4
+Same as securelevel 3 by default. Reserved for customization by the local system administrator.
+.IP 5
+Pedantic - enable aggressive hardening settings. This will likely cause some stuff to break.
+.IP 6
+Same as securelevel 5 by default. Reserved for customization by the local system administrator.
+.PP
+Odd numbered securelevels are reserved for use by the operating system maintainers. They should not be changed. Even numbered levels (with the exception of securelevel 0) are reserved for customization by the local system administrator; these are the should be customized an the individual system.
+
+.SH EXAMPLES
+The following is an example of a simple securetab. The first entry will set the contents of the file /run/securelevel to the current securelevel whenever the securelevel is raised. The second entry will set kernel.modules_disabled to 1 when entering securelevel 3 or higher, which will make it impossible to load or unload any further kernel modules.
+.RS
+.sp
+.nf
+# Keep the file /run/securelevel in sync with the current 
+# securelevel. Do NOT edit or delete this line.
+file:/run/securelevel			1	2	3	4	5	6
+
+# Disable loading or unloading any further kernel modules
+sysctl:kernel.modules_disabled	0	0	1	1	1	1
+.sp
+.fi
+
+.SH FILES
+/etc/securetab
+
+.SH NOTES
+The file /etc/securetab should never be writable by any user besides root. It is also advised that the file be readable only by root.
+
+.SH AUTHOR
+This manual page was written by Scott Court (scott@cucumberlinux.com).
+
+.SH SEE ALSO
+.BR securelevel (8)
