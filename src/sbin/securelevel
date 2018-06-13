@@ -171,14 +171,12 @@ else
 	if [ $NEWLEVEL -lt $SECURELEVEL ]; then
 		echo "The securelevel can be lowered only by rebooting."
 		exit 1
-	elif [ $NEWLEVEL -eq $SECURELEVEL ]; then
-		exit
 	fi
 	OLDLEVEL=$SECURELEVEL
 	SECURELEVEL=$NEWLEVEL
 	parse_file $SECURETAB
 	STATUS=$?
-	if [ $STATUS -eq 0 ]; then
+	if [[ $STATUS -eq 0 && $OLDLEVEL -ne $NEWLEVEL ]]; then
 		echo "Switched securelevel: $OLDLEVEL -> $NEWLEVEL"
 	fi
 	exit $?
