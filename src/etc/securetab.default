@@ -34,6 +34,12 @@ file:/run/securelevel						1	2	3	4	5	6
 # Disable loading or unloading any further kernel modules
 sysctl:kernel.modules_disabled				0	0	1	1	1	1
 
+# Enable IPv6 temporary addresses (RFC 3041). This prevents the MAC address from
+# being used in Stateless Address Autoconfiguration IPv6 addresses, which in
+# turn prevents a possible information disclosure (MAC address disclosure to
+# nodes located on a different LAN).
+sysctl:net.ipv6.conf.all.use_tempaddr		2	2	2	2	2	2
+
 ######################## Kernel Self Protection Project ########################
 # Use the Kernel Self Protection Project's recommended settings (see
 # http://kernsec.org/wiki/index.php/Kernel_Self_Protection_Project/Recommended_Settings)
@@ -59,4 +65,18 @@ sysctl:kernel.unprivileged_bpf_disabled		1	1	1	1	1	1
 sysctl:net.core.bpf_jit_harden				2	2	2	2	2	2
 
 ########################## Pedantic Network Settings ###########################
+
+# Enable IPv4 spoofing protection: turn on route verification.
+sysctl:net.ipv4.conf.all.rp_filter			0	0	0	0	1	1
+
+# Enable logging of IPv4 martian packets (spoofed packets, ICMP redirects, etc)
+sysctl:net.ipv4.conf.all.log_martians		0	0	0	0	1	1
+
+# Disable accepting ICMP redirects
+sysctl:net.ipv4.conf.all.accept_redirects	1	1	1	1	0	0
+sysctl:net.ipv6.conf.all.accept_redirects	1	1	1	1	0	0
+
+# Restrict source addresses for destinations routed via this interface to the
+# set of addresses configured on this interface (vis. RFC 6724, section 4).
+sysctl:net.ipv6.conf.all.use_oif_addrs_only	0	0	0	0	1	1
 
